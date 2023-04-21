@@ -1,6 +1,6 @@
 # Create LSP-only FASTA files
 
-For each of the three LSP haplotypes we need to isolate the LSP region from the rest of the genome. Note that we have to flip the orientation in CH434 and T1 relative to CH14 due to the random orientation that the assemblers placed the containing contigs in.
+For each of the three LSP haplotypes we need to isolate the LSP region from the rest of the genome. Note that we have to flip the orientation in CH434 and T1 relative to CH14 due to the random orientation that the assemblers placed the containing contigs in. This is quick and can be run interactively.
 
 ````bash
 #Request interactive node
