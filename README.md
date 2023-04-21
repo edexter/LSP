@@ -2,7 +2,7 @@ This repository contains all of the code relevant to my investigation into the l
 
 ### Genome annotation
 
-The goal in this module is to identify and functionally annotate the genes present in the different LSP haplotypes. This requires several input files: a Reference genome assemblies containing different LSP haplotypes and Augustus gene prediction model parameters pre-trained for D. magna
+The goal in this module is to identify and functionally annotate the genes present in the different LSP haplotypes. This requires several input files: Reference genome assemblies for genomes containing different LSP haplotypes, and Augustus gene prediction model parameters pre-trained for D. magna.
 
 * Step 1: Create fasta files containing just the LSP sequence from each of the reference assemblies
 * Step 2: Create a catalog of repetitive genetic elements to be masked before gene prediction
