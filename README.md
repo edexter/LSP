@@ -1,4 +1,4 @@
-This repository contains all of the code relevant to my investigation into the large structural polymorphism found on the right arm of chromosome 5 of the Daphnia magna genome. There are several facets of this:
+This repository contains all of the code relevant to my investigation into the large structural polymorphism found on the right arm of chromosome 5 of the Daphnia magna genome. There are several modules:
 
 ### Genome annotation
 
