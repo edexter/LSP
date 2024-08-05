@@ -1,10 +1,8 @@
 # Gene annotation and synteny plots with whole D. magna genomes
 
-### 
-
 ### Format_genomes.sh
 
-First upload all genome assemblies to [genomes_original]  directory and manually clean up the file names. This script then performs various formatting operations required for  the GENESPACE program. This script completes in a few minutes.
+First upload all genome assemblies to [genomes_original] directory and manually clean up the file names. This script then performs various formatting operations required for  the GENESPACE program. This script completes in a few minutes.
 
 ````
 #!/bin/bash
@@ -186,6 +184,21 @@ else
 fi
 ````
 
+# Convert GFF to BED
+
+````
+srun --nodes=1 --cpus-per-task=2 --mem=16G --pty bash
+module load BEDOPS
+
+gff2bed < /scicore/home/ebertd/dexter0000/LSP/annotations/t2_17_3_4i_13.gff3 > t2_17_3_4i_13.bed
+
+gff2bed < /scicore/home/ebertd/dexter0000/LSP/annotations/CH_434-inb3-a-1.gff3 > CH_434-inb3-a-1.bed
+
+gff2bed < /scicore/home/ebertd/dexter0000/LSP/annotations/t1_10_3_2.gff3 > t1_10_3_2.bed
+
+gff2bed < /scicore/home/ebertd/dexter0000/LSP/annotations/t3_12_3_1i_12.gff3 > t3_12_3_1i_12.bed
+````
+
 ### Run genespace
 
 Perform synteny analysis using GENESPACE. This script performs some preliminary setup for the GENESPACE run and the calls and R script to perform the analysis. An entire run takes XXX.
@@ -295,15 +308,6 @@ parsedPaths <- parse_annotations(
 #Run orthofinder
 out <- run_genespace(gpar, overwrite=TRUE)
 
-#Improve the plotting by inverting chromosomes as needed
-#invchr <- data.frame(
-#  genome = c("CH434"), 
-#  chr = c("000012F/rc:1509248-4049114"))
-
-#Add a custom color palette
-#customPal <- colorRampPalette(
-#  c("lightblue"))
-
 #Add a custom background color
 ggthemes <- ggplot2::theme(
   panel.background = ggplot2::element_rect(fill = "black"))
@@ -335,216 +339,9 @@ dev.off()
 pdf(file = "/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/all.pdf",
     width = 5,
     height = 5)
-    
-ripDat <- plot_riparian(
-  out, 
-  refGenome = "t2_17_3_4i_13",
-  useOrder = FALSE, 
-  useRegions = FALSE,
-  reorderBySynteny = TRUE,
-  addThemes = ggthemes,
-  syntenyWeight = 1,
-  backgroundColor = NULL)
-  
-dev.off()
 ````
 
-
-
-### Scaffold genomes
-
-This has to be performed on evoMartes for the time being
-
-````bash
-# install with conda
-conda install -c bioconda ragtag
-
-# Navigate to project folder
-cd ragtag
-
-REF=NCBI_genome.fa
-QUERY=Xinb3_ref.fasta
-
-# correct a query assembly
-ragtag.py correct "$REF" "$QUERY" -o corrected
-
-# scaffold a query assembly
-ragtag.py scaffold "$REF" "$QUERY" -o scaffolded
-
-# scaffold a corrected query assembly
-ragtag.py scaffold "$REF" /home/eric/scratch/ragtag/ragtag_output/ragtag.correct.fasta -o scafCorr
-
-
-
-# make joins and fill gaps in target.fa using sequences from query.fa
-ragtag.py patch target.fa query.fa
-````
-
-
-
-````R
-srun --nodes=1 --cpus-per-task=2 --mem=16G --pty bash
-
-cd /scicore/home/ebertd/dexter0000/LSP
-
-conda activate orthofinder
-
-module load R
-
-R
-
-library(GENESPACE)
-
-load('/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/results/gsParams.rda',verbose = TRUE)
-        
-############################################################
-#SMALLER SUBSET OF GOOD ONES
-###########################################################
-CH_434_inb3_a_1<-data.frame(
-  genome = c("CH_434_inb3_a_1"), 
-  chr = c(12,19,37))
-
-NO_V_7<-data.frame(
-  genome = c("NO_V_7"), 
-  chr = c(71,77,69,11,56))
-  
-FI_SK_58_2_18_4<-data.frame(
-  genome = c("FI_SK_58_2_18_4"), 
-  chr = c(8))
-  
-Xinb3<-data.frame(
-  genome = c("Xinb3"), 
-  chr = c(1,108,49,80,61))
-
-RU_RM1_2<-data.frame(
-  genome = c("RU_RM1_2"), 
-  chr = c(0,1,70,6))
-  
-CN_W1_1<-data.frame(
-  genome = c("CN_W1_1"), 
-  chr = c(6,43,35,21,49,16,69,0))
- 
-t3_12_3_1i_12<-data.frame(
-  genome = c("t3_12_3_1i_12"), 
-  chr = c(75,87))
-
-CH_t4_12_3_3<-data.frame(
-  genome = c("CH_t4_12_3_3"), 
-  chr = c(26,50,3,129))
-  
-CH_H_2299<-data.frame(
-genome = c("CH_H_2299"), 
-chr = c(1,77,85,97))
-
-CH_H_2015_59<-data.frame(
-  genome = c("CH_H_2015_59"), 
-  chr = c(9,109,92,14,25,31,86,108))
-
-US_SP_221_1<-data.frame(
-  genome = c("US_SP_221_1"), 
-  chr = c(6,37))
-
-D_similis_IL_SIM_A20<-data.frame(
-  genome = c("D_similis_IL_SIM_A20"), 
-  chr = c(134,256,338,104,111,81,43,115,93,115))
-
-CH_H_2015_49<-data.frame(
-  genome = c("CH_H_2015_49"), 
-  chr = c(33,49,35))
-
-t2_17_3_4i_13<-data.frame(
-  genome = c("t2_17_3_4i_13"),
-    chr = c(46,161,191,351))
-
-t1_10_3_2<-data.frame(
-  genome = c("t1_10_3_2"), 
-  chr = c(161,23))
-
-NCBI_scaffold<-data.frame(
-  genome = c("NCBI_scaffold"), 
-  chr = c(361461))
-
-invchr <- rbind(CH_434_inb3_a_1, NO_V_7, FI_SK_58_2_18_4, Xinb3, RU_RM1_2, CN_W1_1, t3_12_3_1i_12, t3_12_3_1i_12, CH_t4_12_3_3, CH_H_2299, CH_H_2015_59, US_SP_221_1, D_similis_IL_SIM_A20, t2_17_3_4i_13, t1_10_3_2, CH_H_2015_49,NCBI_scaffold)
-
-#T1 looks too bad "t1_10_3_2"
-genomeIds <- c("D_similis_IL_SIM_A20","US_SP_221_1","CN_W1_1","CH_H_2299","NO_V_7","RU_RM1_2","CH_434_inb3_a_1","FI_SK_58_2_18_4","CH_H_2015_49","t3_12_3_1i_12","CH_t4_12_3_3","CH_H_2015_59","t2_17_3_4i_13","XINB_scaffold")
-
-roi <- data.frame(
-  genome = c("XINB_scaffold"), 
-  chr = c("5","5_1"))
-
-customPal <- colorRampPalette(
-  c("green", "red"))
-
-pdf(file = "/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/test.pdf",
-    width = 8,
-    height = 9)
-    
-ripDat <- plot_riparian(
-  palette = customPal,
-  braidAlpha = .75,
-  gsParam, 
-  refGenome = "XINB_scaffold",
-  useOrder = FALSE, 
-  useRegions = FALSE,
-  reorderBySynteny = TRUE,
-  #addThemes = ggthemes,
-  syntenyWeight = 1,
-  #customRefChrOrder = c("5","51"),
-  #highlightBed = roi,
-  #backgroundColor = "white",
-  xlabel = sprintf("D. magna chromosome 5"),
-  #inversionColor = "white",
-  genomeIDs = genomeIds,
-  highlightBed = roi, 
-  backgroundColor = NULL,
-  invertTheseChrs = invchr,
-  minChrLen2plot = 50000
-)
-  
-  dev.off()
-###########################
-
-customPal <- colorRampPalette(
-  c("green", "red","blue","blue"))
-
-
-roi <- data.frame(
-  genome = c("t2_17_3_4i_13", "t2_17_3_4i_13"), 
-  chr = c("191","351","161","31"))
-
-pdf(file = "/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/rip_CH14.pdf",
-    width = 8,
-    height = 9)
-
-ripDat <- plot_riparian(
-  palette = customPal,
-  braidAlpha = .75,
-  gsParam, 
-  refGenome = "XINB_scaffold",
-  useOrder = FALSE, 
-  useRegions = FALSE,
-  reorderBySynteny = TRUE,
-  #addThemes = ggthemes,
-  syntenyWeight = 1,
-  #customRefChrOrder = c("5","51"),
-  #highlightBed = roi,
-  #backgroundColor = "white",
-  xlabel = sprintf("D. magna chromosome 5"),
-  #inversionColor = "white",
-  genomeIDs = genomeIds,
-  highlightBed = roi, 
-  backgroundColor = NULL,
-  invertTheseChrs = invchr,
-  minChrLen2plot = 50000
-)
-
-
-  dev.off()
-
-````
-
-# Alternate riparian plot with chromosome 5 scaffolded
+### Curated riparian plot
 
 ````
 srun --nodes=1 --cpus-per-task=2 --mem=16G --pty bash
@@ -559,30 +356,31 @@ R
 
 library(GENESPACE)
 
+#Load genespace results
 load('/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/results/gsParams.rda',verbose = TRUE)
         
-############################################################
-#SMALLER SUBSET OF GOOD ONES
-###########################################################
+################################################################
+#Manual curation of genomes
+################################################################
 CH_434_inb3_a_1<-data.frame(
   genome = c("CH_434_inb3_a_1"), 
-  chr = c(5,12,37))
+  chr = c(12,37,5))
 
 NO_V_7<-data.frame(
   genome = c("NO_V_7"), 
-  chr = c(71,2,77,69,11,56))
+  chr = c(77,69,11))
   
 FI_SK_58_2_18_4<-data.frame(
   genome = c("FI_SK_58_2_18_4"), 
-  chr = c(4,8,25))
+  chr = c(8,39,31,4,42,25))
   
 Xinb3<-data.frame(
   genome = c("Xinb3"), 
-  chr = c(1,108,49,80,61))
+  chr = c(108,49,80,61))
 
 RU_RM1_2<-data.frame(
   genome = c("RU_RM1_2"), 
-  chr = c(1,70,6))
+  chr = c(1,70,6,114,73))
   
 CN_W1_1<-data.frame(
   genome = c("CN_W1_1"), 
@@ -590,15 +388,11 @@ CN_W1_1<-data.frame(
  
 t3_12_3_1i_12<-data.frame(
   genome = c("t3_12_3_1i_12"), 
-  chr = c(33,20,157))
-
-t3_12_3_1i_12<-data.frame(
-  genome = c("t3_12_3_1i_12"), 
-  chr = c(33,20,17,75))
+  chr = c(75,33,157,20,17))
 
 CH_t4_12_3_3<-data.frame(
   genome = c("CH_t4_12_3_3"), 
-  chr = c(64,8,50,3,129))
+  chr = c(26,76,29,3,43))
   
 CH_H_2299<-data.frame(
 genome = c("CH_H_2299"), 
@@ -606,7 +400,7 @@ chr = c(77,85,97))
 
 CH_H_2015_59<-data.frame(
   genome = c("CH_H_2015_59"), 
-  chr = c(41,86,147,92,14,25,31))
+  chr = c(41,86,147,92,14,25,108,31))
 
 US_SP_221_1<-data.frame(
   genome = c("US_SP_221_1"), 
@@ -614,33 +408,70 @@ US_SP_221_1<-data.frame(
 
 D_similis_IL_SIM_A20<-data.frame(
   genome = c("D_similis_IL_SIM_A20"), 
-  chr = c(134,256,338,104,111,81,43,64,93))
+  chr = c(134,256,448,64,81,43,31,338,104,111))
 
 CH_H_2015_49<-data.frame(
   genome = c("CH_H_2015_49"), 
-  chr = c(76,35))
+  chr = c(68,76,35,151))
 
 t2_17_3_4i_13<-data.frame(
   genome = c("t2_17_3_4i_13"),
-    chr = c(46,161))
+    chr = c(46))
 
 t1_10_3_2<-data.frame(
   genome = c("t1_10_3_2"), 
-  chr = c(161,23))
+  chr = c(161,23,208,82,662,35,56,98))
 
+CH_2016_H_34<-data.frame(
+  genome = c("CH_2016_H_34"), 
+  chr = c(55,164,21,74,105))
 
-invchr <- rbind(CH_434_inb3_a_1, NO_V_7, FI_SK_58_2_18_4, Xinb3, RU_RM1_2, CN_W1_1, t3_12_3_1i_12, t3_12_3_1i_12, CH_t4_12_3_3, CH_H_2299, CH_H_2015_59, US_SP_221_1, D_similis_IL_SIM_A20, t2_17_3_4i_13, t1_10_3_2, CH_H_2015_49)
+US_D_3<-data.frame(
+  genome = c("US_D_3"), 
+  chr = c(126,7,98,27,38,106,77,9))
 
-#T1 looks too bad "t1_10_3_2"
-genomeIds <- c("D_similis_IL_SIM_A20","US_SP_221_1","CN_W1_1","CH_H_2299","Xinb3","NO_V_7","RU_RM1_2","CH_434_inb3_a_1","FI_SK_58_2_18_4","CH_H_2015_49","t3_12_3_1i_12","CH_t4_12_3_3","CH_H_2015_59","t2_17_3_4i_13")
+NCBI_scaffold<-data.frame(
+  genome = c("NCBI_scaffold"), 
+  chr = c(361461))
 
+ET_C_1<-data.frame(
+  genome = c("ET_C_1"), 
+  chr = c(28,64,2))
+
+DZ_JV_2<-data.frame(
+  genome = c("DZ_JV_2"), 
+  chr = c(26,189,73,116,75,103,19))
+
+IL_TY_10<-data.frame(
+  genome = c("IL_TY_10"), 
+  chr = c(25,56,15))
+
+invchr <- rbind(CH_434_inb3_a_1, NO_V_7, FI_SK_58_2_18_4, Xinb3, RU_RM1_2, CN_W1_1, t3_12_3_1i_12, t3_12_3_1i_12, CH_t4_12_3_3, CH_H_2299, CH_H_2015_59, US_SP_221_1, D_similis_IL_SIM_A20, t2_17_3_4i_13, t1_10_3_2, CH_H_2015_49,NCBI_scaffold,CH_2016_H_34,US_D_3,ET_C_1,DZ_JV_2,IL_TY_10)
+
+genomeIds <- c("D_similis_IL_SIM_A20",             
+               "US_SP_221_1",
+               "RU_RM1_2",
+               "CN_W1_1",               
+               "CH_H_2299",               
+               "CH_434_inb3_a_1",
+               "FI_SK_58_2_18_4",               
+               "CH_H_2015_59",              
+               "t3_12_3_1i_12",
+               "CH_H_2015_49",
+               "t2_17_3_4i_13"
+              )
+
+##############################################################################
+#plots
+##############################################################################
 roi <- data.frame(
-  genome = c("t2_17_3_4i_13", "t2_17_3_4i_13"), 
-  chr = c("191","351","161","31"))
-  
-pdf(file = "/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/test6.pdf",
+  genome = c("t2_17_3_4i_13"), 
+  chr = c("191","161","31","351"))
+
+# export plot
+png(file = "/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/riparian.png",
     width = 8,
-    height = 9)
+    height = 9, units="in", res = 900)
     
 ripDat <- plot_riparian(
   gsParam, 
@@ -648,221 +479,42 @@ ripDat <- plot_riparian(
   useOrder = FALSE, 
   useRegions = FALSE,
   reorderBySynteny = TRUE,
-  #addThemes = ggthemes,
   syntenyWeight = 1,
-  customRefChrOrder = c("191","351","161","31"),
-  #highlightBed = roi,
-  #backgroundColor = NULL,
-  xlabel = sprintf("D. magna chromosome 5"),
-  #inversionColor = "white",
-  genomeIDs = genomeIds,
-  highlightBed = roi, 
-  backgroundColor = NULL,
-  invertTheseChrs = invchr,
-  minChrLen2plot = 50000
-)
-  
-  dev.off()
-````
-
-Alternate plots with just one of each LSP
-
-```
-srun --nodes=1 --cpus-per-task=2 --mem=16G --pty bash
-
-cd /scicore/home/ebertd/dexter0000/LSP
-
-conda activate orthofinder
-
-module load R
-
-R
-
-library(GENESPACE)
-
-load('/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/results/gsParams.rda',verbose = TRUE)
-        
-############################################################
-#SMALLER SUBSET OF GOOD ONES
-###########################################################
-CH_434_inb3_a_1<-data.frame(
-  genome = c("CH_434_inb3_a_1"), 
-  chr = c(12,19,37))
-
-NO_V_7<-data.frame(
-  genome = c("NO_V_7"), 
-  chr = c(71,77,69,11,56))
-  
-FI_SK_58_2_18_4<-data.frame(
-  genome = c("FI_SK_58_2_18_4"), 
-  chr = c(8))
-  
-Xinb3<-data.frame(
-  genome = c("Xinb3"), 
-  chr = c(1,108,49,80,61))
-
-RU_RM1_2<-data.frame(
-  genome = c("RU_RM1_2"), 
-  chr = c(0,1,70,6))
-  
-CN_W1_1<-data.frame(
-  genome = c("CN_W1_1"), 
-  chr = c(6,43,35,21,49,16,69,0))
- 
-t3_12_3_1i_12<-data.frame(
-  genome = c("t3_12_3_1i_12"), 
-  chr = c(75,87))
-
-CH_t4_12_3_3<-data.frame(
-  genome = c("CH_t4_12_3_3"), 
-  chr = c(26,50,3,129))
-  
-CH_H_2299<-data.frame(
-genome = c("CH_H_2299"), 
-chr = c(1,77,85,97))
-
-CH_H_2015_59<-data.frame(
-  genome = c("CH_H_2015_59"), 
-  chr = c(9,109,92,14,25,31,86,108))
-
-US_SP_221_1<-data.frame(
-  genome = c("US_SP_221_1"), 
-  chr = c(6,37))
-
-D_similis_IL_SIM_A20<-data.frame(
-  genome = c("D_similis_IL_SIM_A20"), 
-  chr = c(134,256,338,104,111,81,43,115,93,115))
-
-CH_H_2015_49<-data.frame(
-  genome = c("CH_H_2015_49"), 
-  chr = c(33,49,35))
-
-t2_17_3_4i_13<-data.frame(
-  genome = c("t2_17_3_4i_13"),
-    chr = c(46,161,191,351))
-
-t1_10_3_2<-data.frame(
-  genome = c("t1_10_3_2"), 
-  chr = c(161,23))
-
-NCBI_scaffold<-data.frame(
-  genome = c("NCBI_scaffold"), 
-  chr = c(361461))
-
-invchr <- rbind(CH_434_inb3_a_1, NO_V_7, FI_SK_58_2_18_4, Xinb3, RU_RM1_2, CN_W1_1, t3_12_3_1i_12, t3_12_3_1i_12, CH_t4_12_3_3, CH_H_2299, CH_H_2015_59, US_SP_221_1, D_similis_IL_SIM_A20, t2_17_3_4i_13, t1_10_3_2, CH_H_2015_49,NCBI_scaffold)
-
-genomeIds <- c("D_similis_IL_SIM_A20","US_SP_221_1","NO_V_7","RU_RM1_2","CN_W1_1","CH_434_inb3_a_1","t2_17_3_4i_13","XINB_scaffold")
-
-roi <- data.frame(
-  genome = c("XINB_scaffold"), 
-  chr = c("5","5_1"))
-
-customPal <- colorRampPalette(
-  c("green", "red"))
-
-pdf(file = "/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/test2.pdf",
-    width = 8,
-    height = 9)
-    
-ripDat <- plot_riparian(
-  palette = customPal,
-  braidAlpha = .75,
-  gsParam, 
-  refGenome = "XINB_scaffold",
-  useOrder = FALSE, 
-  useRegions = FALSE,
-  reorderBySynteny = TRUE,
-  #addThemes = ggthemes,
-  syntenyWeight = 1,
-  #customRefChrOrder = c("5","51"),
-  #highlightBed = roi,
-  #backgroundColor = "white",
   xlabel = sprintf("D. magna chromosome 5"),
   genomeIDs = genomeIds,
   highlightBed = roi, 
   backgroundColor = NULL,
   invertTheseChrs = invchr,
   minChrLen2plot = 50000,
-  forceRecalcBlocks = FALSE
+  forceRecalcBlocks = FALSE,
+  scalePlotWidth = 1,
+  gapProp = 0.002,
+  braidAlpha = 0.8,
+  customRefChrOrder=c("191","161","31","351")
 )
   
   dev.off()
-###########################
-
-customPal <- colorRampPalette(
-  c("green", "red","blue","blue"))
-
-
-roi <- data.frame(
-  genome = c("t2_17_3_4i_13", "t2_17_3_4i_13"), 
-  chr = c("191","351","161","31"))
-
-pdf(file = "/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/rip_CH14.pdf",
-    width = 8,
-    height = 9)
-
-ripDat <- plot_riparian(
-  palette = customPal,
-  braidAlpha = .75,
-  gsParam, 
-  refGenome = "XINB_scaffold",
-  useOrder = FALSE, 
-  useRegions = FALSE, #this parameter is important
-  reorderBySynteny = TRUE,
-  #addThemes = ggthemes,
-  syntenyWeight = 1,
-  #customRefChrOrder = c("5","51"),
-  #highlightBed = roi,
-  #backgroundColor = "white",
-  xlabel = sprintf("D. magna chromosome 5"),
-  #inversionColor = "white",
-  #genomeIDs = genomeIds,
-  highlightBed = roi, 
-  backgroundColor = NULL,
-  invertTheseChrs = invchr,
-  minChrLen2plot = 50000
-)
-
-
-  dev.off()
-
-```
-
-
-
-Group 1
-
-t3_12_3_1i_12, 
-
-CH_t4_12_3_3,
-
-CH_H_2015_59,
-
-CH_H_2299,
-
-t2_17_3_4i_13
-
-
-
-Group 2
-
-CH_434_inb3_a_1
-
-FI_SK_58_2_18_4
 
 ````
-load('/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/results/gsParams.rda',verbose = TRUE)
-        
-roi <- data.frame(
-  genome = c("t2_17_3_4i_13", "t2_17_3_4i_13"), 
-  chr = c("191","351","161","31"))
 
-invchr <- data.frame(
-  genome = c("t1_10_3_2", "t1_10_3_2","t1_10_3_2","t1_10_3_2", "t1_10_3_2", "CH_434_inb3_a_1","CH_434_inb3_a_1","t1_10_3_2"), 
-  chr = c(46, 23,641, 107,180, 5, 12,5))
-  
-pdf(file = "/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/test.pdf",
-    width = 8,
+### Minimal riparian plot
+
+````
+genomeIds <- c("t1_10_3_2",             
+               "CH_434_inb3_a_1",
+               "t2_17_3_4i_13"
+              )
+
+##############################################################################
+#plots
+##############################################################################
+roi <- data.frame(
+  genome = c("t2_17_3_4i_13"), 
+  chr = c("191","161","31","351"))
+
+# export plot
+pdf(file = "/scicore/home/ebertd/dexter0000/LSP/genespace/working_dir/riparian_swisspond.pdf",
+    width = 7,
     height = 9)
     
 ripDat <- plot_riparian(
@@ -871,58 +523,22 @@ ripDat <- plot_riparian(
   useOrder = FALSE, 
   useRegions = FALSE,
   reorderBySynteny = TRUE,
-  #addThemes = ggthemes,
   syntenyWeight = 1,
-  customRefChrOrder = c("191","351","161","31"),
-  #highlightBed = roi,
-  #backgroundColor = NULL,
   xlabel = sprintf("D. magna chromosome 5"),
-  #inversionColor = "white",
-  #genomeIDs = c("t1_10_3_2","CH_434_inb3_a_1","t2_17_3_4i_13"),
+  genomeIDs = genomeIds,
   highlightBed = roi, 
   backgroundColor = NULL,
   invertTheseChrs = invchr,
-  minChrLen2plot = 50000
+  minChrLen2plot = 50000,
+  forceRecalcBlocks = FALSE,
+  scalePlotWidth = 1,
+  gapProp = 0.002,
+  braidAlpha = 0.8,
+  customRefChrOrder=c("191","161","31","351")
 )
   
   dev.off()
-
-
-  
-  #########################
-  
-Crappy
-t1_10_3_2
-ET_C_1
-"US_D_3"
-
-
 ````
 
 
-
-# Filter out duplicate haplotigs
-
-````
-This is what samtools faidx is intended for.
-
-It needs to be called twice.
-
-First, to create a FASTA index (*.fai file):
-
-samtools faidx input.fasta
-Secondly, to filter the FASTA file with the help of the index:
-
-samtools faidx -o output.fasta input.fasta ids…
-ids… are the IDs to retain, as individual arguments separated by space. If you’ve got a file blocklist.txt with IDs you want to discard (one per line), you first need to invert this, after having created the index (using Bash syntax):1
-
-remove_ids=($(awk '{print $1}' input.fasta.fai | grep -v -f blocklist.txt))
-… and then we can invoke the command as
-
-samtools faidx -o output.fasta input.fasta "${remove_ids[@]}"
-What’s nice about samtools faidx is that it also works with BGZF-compressed FASTA data — i.e. fa.gz files (but only if they were compressed using bgzip, which ships with Samtools, and the index must be generated on the compressed file). However, it will always write FASTA. If you want gzipped FASTA output, you need to manually stream the result into bgzip:
-
-
-samtools faidx input.fasta.gz "${remove_ids[@]}" | bgzip -c >output.fasta.gz
-````
 

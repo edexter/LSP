@@ -1,3 +1,4 @@
+# Load required packages
 library(tidyverse)
 library(ggplot2)
 library(zoo)  # for rolling means
@@ -5,48 +6,35 @@ library(zoo)  # for rolling means
 #Load data
 df <- read.delim("C:/Users/ericd/Desktop/combBed.txt")
 
-# Remove scaffold genomes
+# Remove scaffolded genome copies from the set(retain contig-level originals)
 exclude_list <- c("XINB_scaffold","T1_scaffold","CH434_scaffold","CH14_scaffold")
 df <- df[!(df$genome %in% exclude_list),  ]
 
-# Step 1: Create a binary indicator for presence in each genome
+# Create a binary indicator for presence of gene in each genome
 df <- df %>%
   mutate(presence = 1)  # add a column with all 1s indicating presence
 
-# Step 2: Transform the data to wide format
-wide_df <- df %>%
-  select(id, genome, presence) %>%
-  distinct() %>%
-  pivot_wider(names_from = genome, values_from = presence, values_fill = 0)
+################################################################################
+# CONSERVED GENE SLIDING WINDOW ACROSS CHROMOSOME 5
 
-wide_df$totals <- rowSums(wide_df[,-1])
-
-###############################################################################
-#Reformat and count occurances
-
-# 1. Count number of genomes each gene was found in:
+# Count number of genomes each gene was found in:
 gene_presence_count <- df %>%
   group_by(og) %>%
   summarise(presence_count = sum(presence > 0)) 
 
-# 2. Filter for reference genome (CH14_scaffold):
+# Filter for just the contig containing the HDH:
 reference_genome_data <- df %>%
-  filter(genome == "t2_17_3_4i_13",chr == 31 | chr == 19) %>%
+  filter(genome == "t2_17_3_4i_13",chr == 31) %>%
   left_join(gene_presence_count, by = "og")
 
-# 2. Filter for chromosome 5 and reference genome (CH14_scaffold):
-cutoff <- 0.5*length(unique(df$genome))
-
-table(reference_genome_data$presence_count > cutoff)
-
 # Calculate rolling mean of presence count with a specified window size:
-window_size <- 25  # Define the size of the window for the rolling mean
+window_size <- 5  # Define the size of the window for the rolling mean
 reference_genome_data <- reference_genome_data %>%
   arrange(chr, start) %>%
   group_by(chr) %>%
   mutate(rolling_mean = rollmean(presence_count, window_size, fill = NA, align = 'right'))
 
-# 3. Plotting with sliding window mean:
+# Plotting with sliding window mean:
 ggplot(reference_genome_data, aes(x = start, y = presence_count)) +
   geom_point(alpha = 0.2) +  # Points for each gene's location
   geom_line(aes(y = rolling_mean), size = 1, linetype = "dashed", col = "red") +  # Line for the rolling mean
@@ -57,23 +45,31 @@ ggplot(reference_genome_data, aes(x = start, y = presence_count)) +
   theme_minimal() +
   geom_hline(yintercept = 25,col = "blue")
 
-
 ################################################################################
-# 2. Filter for chromosome 5 and reference genome (CH14_scaffold):
+# CONSERVED GENE COUNTS
+
+# Set the proportion  the proportion of genomes that a gene must be found in to
+# consider it conserved
 cutoff <- 0.5*length(unique(df$genome))
 
-# Stats
+# Count the number of conserved genes on the left chromosome 5 arm.
 counts <- df %>%
   filter(genome == "t2_17_3_4i_13",chr == 191 | chr == 351) %>%
   left_join(gene_presence_count, by = "og")
 
+# Raw numbers
 table(counts$presence_count > cutoff)
+
+# As proportion
 table(counts$presence_count > cutoff) / nrow(counts)
 
-# Right arm
+# Count the number of conserved genes on the right chromosome 5 arm.
 counts <- df %>%
   filter(genome == "t2_17_3_4i_13",chr == 161 | chr == 31) %>%
   left_join(gene_presence_count, by = "og")
 
+# Raw numbers
 table(counts$presence_count > cutoff)
+
+# As proportion
 table(counts$presence_count > cutoff) / nrow(counts)

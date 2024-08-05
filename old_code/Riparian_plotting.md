@@ -158,7 +158,7 @@ ripDat <- plot_riparian(
 
 # Pairwise just three
 
-````
+````R
 genomeIds <- c("t1_10_3_2",             
                "CH_434_inb3_a_1",
                "t2_17_3_4i_13"
