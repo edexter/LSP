@@ -174,14 +174,14 @@ res <- data.frame(cbind(ID, meanCov,stateCH14, stateCH434, stateT1, dosCH14, dos
 res$state <- "Unknown"
 
 #Assign homozygote states and verify dataframe (passes)
-res$state <- ifelse(res$stateCH14 == "Homozygote LSP1" & res$stateCH434 == "Homozygote X" & res$stateT1 == "Homozygote X" ,"LSP1",res$state)
-res$state <- ifelse(res$stateCH14 == "Homozygote X" & res$stateCH434 == "Homozygote LSP2" & res$stateT1 == "Homozygote X","LSP2",res$state)
-res$state <- ifelse(res$stateCH14 == "Homozygote X" & res$stateCH434 == "Homozygote X" & res$stateT1 == "Homozygote LSP3","LSP3",res$state)
+res$state <- ifelse(res$stateCH14 == "Homozygote Haplotype 1" & res$stateCH434 == "Homozygote X" & res$stateT1 == "Homozygote X" ,"Haplotype 1",res$state)
+res$state <- ifelse(res$stateCH14 == "Homozygote X" & res$stateCH434 == "Homozygote Haplotype 2" & res$stateT1 == "Homozygote X","Haplotype 2",res$state)
+res$state <- ifelse(res$stateCH14 == "Homozygote X" & res$stateCH434 == "Homozygote X" & res$stateT1 == "Homozygote Haplotype 3","Haplotype 3",res$state)
 
 #Assign heterozygote states and verify dataframe (passes)
-res$state <- ifelse(res$stateCH14 == "Heterozgyote LSP1" & res$stateCH434 == "Heterozgyote LSP2" & res$stateT1 == "Homozygote X","1/2",res$state)
-res$state <- ifelse(res$stateCH14 == "Heterozgyote LSP1" & res$stateCH434 == "Homozygote X" & res$stateT1 == "Heterozgyote LSP3","1/3",res$state)
-res$state <- ifelse(res$stateCH14 == "Homozygote X" & res$stateCH434 == "Heterozgyote LSP2" & res$stateT1 == "Heterozgyote LSP3","2/3",res$state)
+res$state <- ifelse(res$stateCH14 == "Heterozgyote Haplotype 1" & res$stateCH434 == "Heterozgyote Haplotype 2" & res$stateT1 == "Homozygote X","1/2",res$state)
+res$state <- ifelse(res$stateCH14 == "Heterozgyote Haplotype 1" & res$stateCH434 == "Homozygote X" & res$stateT1 == "Heterozgyote Haplotype 3","1/3",res$state)
+res$state <- ifelse(res$stateCH14 == "Homozygote X" & res$stateCH434 == "Heterozgyote Haplotype 2" & res$stateT1 == "Heterozgyote Haplotype 3","2/3",res$state)
 res$state <- as.factor(res$state)
 res$meanCov <- as.numeric(res$meanCov)
 table(res$state)
@@ -190,3 +190,5 @@ table(res$state)
 write.table(res[,c(1,2,6,7,8,9)], "C:/Users/ericd/Dropbox/Eric Work/Ebert lab/LSP/data/LSP_depth_stats/LSP_depth_genotypes.txt",
             quote = FALSE, sep = "\t", row.names = FALSE)
 
+
+resOLD <- res

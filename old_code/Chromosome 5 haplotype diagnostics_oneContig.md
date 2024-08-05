@@ -1,441 +1,52 @@
-# Chromosome 5 haplotype diagnostics
+# Chromosome 5 diagnostics (Haplotype 1)
 
-This project maps reads to three different references genomes, each containing a different variant of the large structural polymorphism (LSP) on chromosome 5. Missingness and read depth are then used to determine which versions of the LSP are present in as many D. magna clones as we have sequence data for.
-
-# Map reads to CH14 reference
+This project maps reads to three different references genomes, each containing a different variant forms of the chromosome 5 HDH (highly divergent haplotype region) - sometimes previously known as the LSP (large structural polymorphism). Missingness and read depth are then used to determine which versions of the HDH are present for many different D. magna clones as we have sequence data for. There are some idiosyncrasies in the formatting of each of the genome assemblies and so each one is processed with a separate script.
 
 
 
-### Create various index files for the genome
+### Prepare reference genome and project folder
 
 ````bash
-#First prep the reference genome for a number of different possible indices that might be needed at some point
-srun --nodes=1 --cpus-per-task=8 --mem=16G --pty bash
-
-#Navigate to reference directory
-cd /scicore/home/ebertd/dexter0000/daphnia_ref/CH14
-
-REF=t2_17.3_4i_13.v0.1.fasta #Reference FASTA name
-
-#GATK
-module load GATK
-gatk CreateSequenceDictionary -R "$REF"
-
-#BWA2
-module purge
-module load bwa-mem2
-bwa-mem2 index -p "$REF" "$REF"
-
-#SAMtools
-module purge 
-module load SAMtools
-samtools faidx "$REF"
-````
-
-### Map to reference
-
-This requires an index file with the sample names for the reads
-
-````
-#!/bin/bash
-
-#SBATCH --job-name=bam_prep_daphnia_CH14		#Job name
-#SBATCH --cpus-per-task=4	                  	#Number of cores reserved
-#SBATCH --mem-per-cpu=16G              			#Memory reserved per core.
-												#Total memory reserved: 32GB
-#SBATCH --time=168:00:00	        			#Maximum time the job will run
-#SBATCH --qos=1week	           					#The job queue (time based)
-
-#This is the stdout file
-#SBATCH --output=/scicore/home/ebertd/dexter0000/interlink/logfiles/daphFq2BamOut_%A_%a
-
-#This is the stderr file
-#SBATCH --error=/scicore/home/ebertd/dexter0000/interlink/logfiles/daphFq2BamErr_%A_%a
-
-#Specifies an array of jobs from 1-8 with 100 max simultaneous
-#SBATCH --array=1-258%100
-
-#Things remember when running on sciCore:
-#This job runs from the current working directory
-#The variable $TMPDIR points to the local hard disks in the computing nodes.
-#The variable $HOME points to your home directory.
-#The variable $SLURM_JOBID stores the ID number of your job.
-#Make sure reference is indexed before running (only needs to be done once)
-#bwa index "$REF"
-
-###############################################################################
-#Define variables
-
-#Sample index
-INDEXFILE=/scicore/home/ebertd/dexter0000/interlink/scripts/index
-
-#Sample i from index
-SAMP=$(sed -n ${SLURM_ARRAY_TASK_ID}p $INDEXFILE)
-
-REF="/scicore/home/ebertd/dexter0000/daphnia_ref/CH14/t2_17.3_4i_13.v0.1.fasta"
-
-################################################################################
-
-#load required modules
-export LMOD_DISABLE_SAME_NAME_AUTOSWAP=no
-module load bwa-mem2
-module load SAMtools
-module load picard
-################################################################################
-#Part 1
-
-cd /scicore/home/ebertd/dexter0000/interlink/bamsDaphnia_CH14
-
-#Map reads to reference genome, convert SAM output to BAM, and sort BAM.
-#It's best to combine these steps to avoid writing large intermediate files
-#to disk
-
-echo "mapping reads of "$SAMP""
-bwa-mem2 mem -t 2 -M "$REF" \
-/scicore/home/ebertd/dexter0000/interlink/reads/"$SAMP"_paired_R1_trimmed.fq.gz \
-/scicore/home/ebertd/dexter0000/interlink/reads/"$SAMP"_paired_R2_trimmed.fq.gz \
-| samtools sort -@ 2 -o "$SAMP"_daphnia_sorted.bam
-
-# print mapping statistics to screen
-echo "Mapping stats for "$SAMP"_daphnia are:"
-samtools flagstat "$SAMP"_daphnia_sorted.bam | tee "$SAMP"_daphnia_flagstat.txt
-
-#Append read group metadata
-echo "Adding readgroup to "$SAMP"_daphnia_sorted.bam"
-java -jar $EBROOTPICARD/picard.jar AddOrReplaceReadGroups \
-I="$SAMP"_daphnia_sorted.bam \
-O="$SAMP"_daphnia_R.bam \
-RGID="$SAMP"  \
-RGLB="$SAMP"  \
-RGPL=illumina  \
-RGPU="$SAMP"  \
-RGSM="$SAMP"
-
-#Index BAM
-echo ""$SAMP"_daphnia_R.bam file is being indexed"
-samtools index -@ 2 -b "$SAMP"_daphnia_R.bam
-	
-#remove duplicates
-echo "duplicates are being removed"
-java -jar $EBROOTPICARD/picard.jar MarkDuplicates \
-REMOVE_DUPLICATES=TRUE \
-I="$SAMP"_daphnia_R.bam \
-O="$SAMP"_daphnia_R_rdup.bam \
-M="$SAMP"_daphnia_duplicate_metrics.txt
-	
-#Index new BAM
-echo ""$SAMP"_daphnia_R.bam file is being indexed"
-samtools index -@ 2 -b "$SAMP"_daphnia_R_rdup.bam
-
-#remove intermediate files
-if [ -s "$SAMP"_daphnia_R_rdup.bam ]; then
-	echo "removing intermediate files. ALMOST DONE!"
-	rm "$SAMP"_daphnia_sorted.bam
-	rm "$SAMP"_daphnia_R.bam
-	rm "$SAMP"_daphnia_R.bam.bai
-else 
-	echo "Something went wrong! the sorted bam file has size 0" 
-fi
-
-################################################################################
-#Part 2: Prepre BAM files for variant calling
-################################################################################
-
-
-#Remove unmapped reads from bam
-echo "removing unmapped reads of "$SAMP" bam file"
-samtools view -b -F 4 -@ 2 "$SAMP"_daphnia_R_rdup.bam \
-> "$SAMP"_daphnia_Rm_rdup.bam
-
-#Index new bam
-echo "indexing new "$SAMP" bam file"
-samtools index -@ 2 "$SAMP"_daphnia_Rm_rdup.bam
-
-#remove intermediate files
-if [ -s "$SAMP"_daphnia_Rm_rdup_indelrealigner.bam ]; then
-	echo "removing intermediate bam files."
-	rm "$SAMP"_daphnia_R_rdup.bam
-	rm "$SAMP"_daphnia_R_rdup.bam.bai
-	rm "$SAMP"_INDEL.vcf
-	rm "$SAMP"_INDEL.vcf.idx
-else
-	echo "ERROR: the sorted bam file has size 0"
-fi
-````
-
-### Extract mapping depths
-
-````
-cd bamsDaphnia_CH14 #Location of BAM files
-
-mkdir stats #Folder for BAM stats
-
-#Generate an index file for the BAMs
-ls *_daphnia_flagstat.txt | awk -F'[_.]' '{print $1}' > index
-
-#Calculate coverage across BAMS
-module purge
-module load SAMtools
-cat index | while read line 
-do
-   samtools coverage "$line"_daphnia_Rm_rdup.bam -o stats/"$line"_daphnia_coverage.txt
-done
-
-# Extract the sample name from the filenames
-ls *_daphnia_coverage.txt | awk -F'[_.]' '{print $1}'
-
-
-
-   samtools coverage J089_daphnia_R_rdup.bam -o J089_daphnia_coverage.txt
-
-
-
-J089
-#Iterate an awk function over a list of files to get coverage stats
-for i in *_daphnia_coverage.txt; do
-awk 'NR==2{print $4,$6,$7}' $i
-done
-
-#Calculate coverage across all contigs
-for i in *_daphnia_coverage.txt; do
-awk '{totalBases+=$3; coveredBases+=$5;} END {print coveredBases/totalBases;}' $i 
-done
-
-# Specific coverage across region (be sure to use the same quality filters as above)
-
-#Calculate depth per site per sample over a specific interval
-samtools depth -a -f scripts/daphnia.bams.list -o scratch/daphnia_depth_contig25_MQ40 -r "000025F|quiver:0-1957319" -Q 40
-
-#Sum all mapping depths
-awk '{for(i=3;i<=NF;i++) t+=$i; print t; t=0}' scratch/daphnia_depth_contig25_MQ40 > scratch/sum.txt
-
-awk '{print $1, $2}' scratch/daphnia_depth_contig25_MQ40 > scratch/positions.txt
-
-paste -d' ' scratch/positions.txt scratch/sum.txt > scratch/combined.txt
-
-awk 'NR % 50 == 0' scratch/combined.txt > scratch/XINB_contig25_depth.txt
-
-rm scratch/positions.txt scratch/sum.txt scratch/combined.txt
-````
-
-### R code to interpret mapping depth
-
-````
-#Calculate relative coverage of the LSP compared to per sample genome wide coverage
-
-#CH434 Homozygotes have relative coverage around 1
-#CH434 Heterozygotes have relative coverage around 0.5
-#Homozygotes for other LSP haplotypes have coverage around 0
-````
-
-
-
-
-
-# Map reads to CH434 reference
-
-
-
-````
-#First prep the reference genome for a number of different possible indices that might be needed at some point
-srun --nodes=1 --cpus-per-task=8 --mem=16G --pty bash
-
-#Navigate to reference directory
-cd /scicore/home/ebertd/dexter0000/daphnia_ref/alt2
-
-REF=CH_434-inb3-a-1.falcon.polish.mask.fasta #Reference FASTA name
-
-#GATK
-module load GATK
-gatk CreateSequenceDictionary -R "$REF"
-
-#BWA2
-module purge
-module load bwa-mem2
-bwa-mem2 index -p "$REF" "$REF"
-
-#SAMtools
-module purge 
-module load SAMtools
-samtools faidx "$REF"
-
-#Prepare directory
-cd /scicore/home/ebertd/dexter0000/interlink/bamsDaphnia_CH434
-mkdir stats_cov stats_flag
-````
-
-````bash
-#!/bin/bash
-
-#SBATCH --job-name=bam_prep_daphnia_CH434		#Job name
-#SBATCH --cpus-per-task=8	                  	#Number of cores reserved
-#SBATCH --mem-per-cpu=16G              			#Memory reserved per core.
-												#Total memory reserved: 32GB
-#SBATCH --time=168:00:00	        			#Maximum time the job will run
-#SBATCH --qos=1week	           					#The job queue (time based)
-
-#This is the stdout file
-#SBATCH --output=/scicore/home/ebertd/dexter0000/interlink/logfiles/CH434mapping_out_%A_%a
-
-#This is the stderr file
-#SBATCH --error=/scicore/home/ebertd/dexter0000/interlink/logfiles/CH434mapping_err_%A_%a
-
-#Specifies an array of jobs from 1-8 with 100 max simultaneous
-#SBATCH --array=1-258%100
-
-#Things remember when running on sciCore:
-#This job runs from the current working directory
-#The variable $TMPDIR points to the local hard disks in the computing nodes.
-#The variable $HOME points to your home directory.
-#The variable $SLURM_JOBID stores the ID number of your job.
-#Make sure reference is indexed before running (only needs to be done once)
-#bwa index "$REF"
-
-###############################################################################
-#Define variables
-
-#Sample index
-INDEXFILE=/scicore/home/ebertd/dexter0000/interlink/scripts/index
-
-#Sample i from index
-SAMP=$(sed -n ${SLURM_ARRAY_TASK_ID}p $INDEXFILE)
-
-REF="/scicore/home/ebertd/dexter0000/daphnia_ref/alt2/CH_434-inb3-a-1.falcon.polish.mask.fasta"
-
-################################################################################
-
-#load required modules
-export LMOD_DISABLE_SAME_NAME_AUTOSWAP=no
-module load bwa-mem2
-module load SAMtools
-module load picard
-################################################################################
-#Part 1
-
-cd /scicore/home/ebertd/dexter0000/interlink/bamsDaphnia_CH434
-
-#Map reads to reference genome, convert SAM output to BAM, and sort BAM.
-#It's best to combine these steps to avoid writing large intermediate files
-#to disk
-
-echo "mapping reads of "$SAMP""
-bwa-mem2 mem -t 8 -M "$REF" \
-/scicore/home/ebertd/dexter0000/interlink/reads/"$SAMP"_paired_R1_trimmed.fq.gz \
-/scicore/home/ebertd/dexter0000/interlink/reads/"$SAMP"_paired_R2_trimmed.fq.gz \
-| samtools sort -@ 8 -o "$SAMP"_daphnia_sorted.bam
-
-# print mapping statistics to screen
-echo "Mapping stats for "$SAMP"_daphnia are:"
-samtools flagstat "$SAMP"_daphnia_sorted.bam | tee stats_flag/"$SAMP"_daphnia_flagstat.txt
-
-#Append read group metadata
-echo "Adding readgroup to "$SAMP"_daphnia_sorted.bam"
-java -jar $EBROOTPICARD/picard.jar AddOrReplaceReadGroups \
-I="$SAMP"_daphnia_sorted.bam \
-O="$SAMP"_daphnia_R.bam \
-RGID="$SAMP"  \
-RGLB="$SAMP"  \
-RGPL=illumina  \
-RGPU="$SAMP"  \
-RGSM="$SAMP"
-
-#Index BAM
-echo ""$SAMP"_daphnia_R.bam file is being indexed"
-samtools index -@ 8 -b "$SAMP"_daphnia_R.bam
-	
-#remove duplicates
-echo "duplicates are being removed"
-java -jar $EBROOTPICARD/picard.jar MarkDuplicates \
-REMOVE_DUPLICATES=TRUE \
-I="$SAMP"_daphnia_R.bam \
-O="$SAMP"_daphnia_R_rdup.bam \
-M="$SAMP"_daphnia_duplicate_metrics.txt
-	
-#Index new BAM
-echo ""$SAMP"_daphnia_R.bam file is being indexed"
-samtools index -@ 8 -b "$SAMP"_daphnia_R_rdup.bam
-
-#remove intermediate files
-if [ -s "$SAMP"_daphnia_R_rdup.bam ]; then
-	echo "removing intermediate files. ALMOST DONE!"
-	rm "$SAMP"_daphnia_sorted.bam
-	rm "$SAMP"_daphnia_R.bam
-	rm "$SAMP"_daphnia_R.bam.bai
-else 
-	echo "Something went wrong! the sorted bam file has size 0" 
-fi
-
-################################################################################
-#Part 2: Prepre BAM files for variant calling
-################################################################################
-
-#Remove unmapped reads from bam
-echo "removing unmapped reads of "$SAMP" bam file"
-samtools view -b -F 4 -@ 8 "$SAMP"_daphnia_R_rdup.bam \
-> "$SAMP"_daphnia_Rm_rdup.bam
-
-#Index new bam
-echo "indexing new "$SAMP" bam file"
-samtools index -@ 4 "$SAMP"_daphnia_Rm_rdup.bam
-
-#remove intermediate files
-if [ -s "$SAMP"_daphnia_Rm_rdup.bam ]; then
-	echo "removing intermediate bam files."
-	rm "$SAMP"_daphnia_R_rdup.bam
-	rm "$SAMP"_daphnia_R_rdup.bam.bai
-else
-	echo "ERROR: the sorted bam file has size 0"
-fi
-
-#Get coverage stats per contig
-samtools coverage "$SAMP"_daphnia_Rm_rdup.bam -o stats_cov/"$SAMP"_daphnia_coverage.txt
-````
-
-
-
-# Mapping reads to just one contig for CH14
-
-Reference and folder preparation
-
-````bash
-#Request an interactive job
+# Request an interactive job
 srun --nodes=1 --cpus-per-task=8 --mem=8G --pty bash
 
-#Create the project folder
+# Create the project folder
 mkdir bams_CH14_C3 bams_CH14_C3/stats_flag bams_CH14_C3/stats_cov bams_CH14_C3/stats_dup bams_CH14_C3/ref bams_CH14_C3/stats_LSP_depth
 
-#Navigate to the main project folder
+# Navigate to the main project folder
 cd bams_CH14_C3
 
-#Create a smaller reference genome with only contig of interest
+# Create a smaller reference genome with only contig of interest
 module purge
 module load SAMtools
 samtools faidx /scicore/home/ebertd/dexter0000/daphnia_ref/CH14/t2_17.3_4i_13.v0.1.fasta "ptg000003l_1" > ref/CH14_C3.fasta
 
-#Assign the new reference path as a variable
+# Assign the new reference path as a variable
 REF="ref/CH14_C3.fasta"
 
-#Index the reference genome for BWA tool
+# Index the reference genome for BWA tool
 module purge
 module load bwa-mem2
 bwa-mem2 index -p "$REF" "$REF"
 
-#Index the reference genome for SAMtools
+# Index the reference genome for SAMtools
 module purge 
 module load SAMtools
 samtools faidx "$REF"
 ````
 
-Mapping to LSP contig
+
+
+### Short read mapping to the Haplotype 1 reference
 
 ````bash
 #!/bin/bash
 
-#SBATCH --job-name=bam_prep_daphnia_CH434		#Job name
+#SBATCH --job-name=bam_prep_daphnia_CH14		#Job name
 #SBATCH --cpus-per-task=8	                  	#Number of cores reserved
 #SBATCH --mem-per-cpu=4G              			#Memory reserved per core.
 												#Total memory reserved: 32GB
-#SBATCH --time=24:00:00	        			#Maximum time the job will run
+#SBATCH --time=24:00:00	        				#Maximum time the job will run
 #SBATCH --qos=1day	           					#The job queue (time based)
 
 #This is the stdout file
@@ -555,9 +166,13 @@ fi
 samtools coverage "$SAMP"_daphnia_Rm_rdup.bam -o stats_cov/"$SAMP"_daphnia_coverage.txt
 ````
 
-Get coverage stats per sample for LSP and flanking regions
 
-````
+
+### Collect mapping depth stats from the HDH and flanking regions
+
+This can be performed interactively.
+
+````bash
 #Request an interactive job
 srun --nodes=1 --cpus-per-task=16 --mem=4G --pty bash
 
@@ -571,12 +186,13 @@ ls *.bam > bam.list
 module purge
 module load SAMtools
 samtools depth -@ 16 -a -f bam.list -r "ptg000003l_1" --min-MQ 40 | awk 'NR % 100 == 0' > stats_LSP_depth/LSP_depth_CH14
-
 ````
 
-R code for plotting the results and further analysis
 
-````
+
+### R code for plotting the results and further analysis
+
+````R
 #Load required packages
 library(ggplot2)
 library(slider)
@@ -662,8 +278,6 @@ df2 <- cbind(ID,df2)
 write.table(df2, "C:/Users/ericd/Dropbox/Eric Work/Ebert lab/LSP/LSP_depth_stats/LSP_depth_Ch14_igv.txt",
             quote = FALSE, sep = "\t", row.names = FALSE)
 ````
-
-**ptg000003l_1:744,638-756,700 is a pretty good visual diagnostic in IGV for the "A" haplotype**
 
 
 

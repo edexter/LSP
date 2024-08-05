@@ -2,6 +2,12 @@
 
 Here LD is calculated across D. magna chromosome 5 relative to reads mapped against the CH14 genome. Because the chromosome is broken into 4 contigs in the assembly, LD has to be calculated within and between all of the contigs separately. The results are then merged together in the subsequent R script. 
 
+
+
+### LD calculations
+
+This is a small task that can be performed interactively in Linux.
+
 ````bash
 #Request interactive node
 srun --nodes=1 --cpus-per-task=8 --mem=32G --pty bash
@@ -31,7 +37,9 @@ vcftools --interchrom-geno-r2 --vcf CH14_filtered_fixed.vcf --out CH14 --chr "pt
 
 
 
-# Post processing of LD calculations in R
+### LD plots
+
+The following R script performs some post-processing of the LD calculation files and produces a plot showing the final results.
 
 ````R
 # Load required packages
@@ -146,6 +154,7 @@ p <- ggplot(df7[df7$N_INDV>1 ,], aes(x = pos1MB, y = pos2MB, fill = R.2)) +
         panel.grid.minor = element_blank())+  # Remove minor grid lines
   geom_rect(aes(xmin = LSPleft , xmax = LSPright, ymin = LSPleft, ymax = LSPright), 
             inherit.aes = FALSE, fill = NA, color = "black", linetype = "dashed", size =0.3)
+
 # Save the plot
 ggsave("C:/Users/ericd/Downloads/LD_chr5.png", plot = p, width = 6, height = 6, dpi = 900)
 ````

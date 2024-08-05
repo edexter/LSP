@@ -5,6 +5,8 @@
 # Load required packages
 ################################################################################
 
+#NOTE: Must also load the custom functions from the file "dotplot_matrix_utils.R"
+
 library(pafr) # For reading and manipulating the alignments
 library(gridExtra) # For plotting as a grid
 

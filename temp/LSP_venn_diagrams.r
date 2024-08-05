@@ -1,3 +1,4 @@
+################################################################################
 #Load required packages
 library(readr)
 library(stringr)
@@ -5,10 +6,17 @@ library(ggplot2)
 library(ggVennDiagram)
 library(gridExtra)
 
-#Load orthogroup data
+################################################################################
+# Load required data
+
+# Load orthogroups
 Orthogroups <- read.delim2("C:/Users/ericd/Dropbox/Eric Work/Ebert lab/LSP/gene_prediction/Orthogroups.tsv")
 
 ################################################################################
+# Prepare Venn Diagrams for left arm control region
+################################################################################
+
+
 #LSP 1 (CH14 assembly)
 ################################################################################
 #Parameters for this genome
@@ -37,7 +45,6 @@ for(i in 1:nrow(BED_CH14)){
   BED_CH14$ORTH[i] <- Orthogroups$Orthogroup[grep(GENE,unlist(TARGET))]
 }
 
-################################################################################
 #LSP 2 (CH434 assembly)
 ################################################################################
 #Parameters for this genome
@@ -69,7 +76,6 @@ for(i in 1:nrow(BED_CH434)){
   BED_CH434$ORTH[i] <- Orthogroups$Orthogroup[grep(GENE,unlist(TARGET))]
 }
 
-################################################################################
 #LSP 3 (T1 assembly)
 ################################################################################
 #Parameters for this genome
@@ -110,13 +116,11 @@ p1 <- ggVennDiagram(x, c("Hap. 1","Hap. 2","Hap. 3"),label_alpha=0.7)+
   labs(fill='Gene count')+scale_color_manual(values = c("black", "black", "black"))
 ggsave("C:/Users/ericd/Downloads/Venn_control.png",plot = p1, width = 6, height = 5)
 
-################################################################################
-################################################################################
-#LSP region
-################################################################################
-################################################################################
 
 ################################################################################
+# Prepare diagrams for right-arm LSP region
+################################################################################
+
 #CH14
 ################################################################################
 CONTIG <- 31
@@ -143,7 +147,6 @@ for(i in 1:nrow(BED_CH14)){
   BED_CH14$ORTH[i] <- Orthogroups$Orthogroup[grep(GENE,unlist(TARGET))]
 }
 
-################################################################################
 #CH434
 ################################################################################
 CONTIG <- 12
@@ -160,7 +163,6 @@ BED$contig <- BED$V1
 BED_CH434 <- BED[BED$contig == CONTIG & BED$V2 >= START & BED$V3 <= STOP, ]
 
 #This function appends the orthogroup to each predicted gene
-#################################################
 TARGET <- data.frame(gsub(" ","",Orthogroups$CH_434_inb3_a_1))
 TARGET <- data.frame(paste(",",TARGET$gsub..........Orthogroups.CH_434_inb3_a_1.,",",sep = ""))
 
@@ -172,7 +174,6 @@ for(i in 1:nrow(BED_CH434)){
   BED_CH434$ORTH[i] <- Orthogroups$Orthogroup[grep(GENE,unlist(TARGET))]
 }
 
-################################################################################
 #T1
 ################################################################################
 CONTIG <- 23
@@ -202,7 +203,6 @@ for(i in 1:nrow(BED_T1)){
 }
 
 ################################################################################
-
 #Comparison across genomes
 x <- list(BED_CH14$ORTH, BED_CH434$ORTH, BED_T1$ORTH)
 
@@ -222,10 +222,11 @@ ggsave("C:/Users/ericd/Downloads/Venn_LSP.png",plot = p2, width = 6, height = 5)
 p <- grid.arrange(p1, p2, ncol = 2) # Equivalent to nrow = 1
 ggsave("C:/Users/ericd/Downloads/Venn_LSP.png",plot = p, width = 9, height = 4.5)
 
-
 ################################################################################
-# Get unique genes in LSP1
+# Find private orthologs in Haplotype 1
+
 privateBED <- BED_CH14[!(BED_CH14$ORTH %in% BED_CH434$ORTH) & !(BED_CH14$ORTH %in% BED_T1$ORTH),]
+
 geneList <- read.delim("C:/Users/ericd/Dropbox/Eric Work/Ebert lab/LSP/gene_prediction/tsv_files/t2_17_3_4i_13_functional.tsv", header = FALSE)
 
 geneList <- geneList[geneList$V1 %in% privateBED$ID,]
@@ -239,17 +240,19 @@ model <- geneList$V4.x
 hitName <- geneList$V6.x
 geneID <- geneList$V1
 
+# All private orthologs
 result <- data.frame(geneID,contig,startPos,stopPos,model,hitName)
-
-result2 <- result[grepl("fuc",result$hitName, ignore.case = TRUE),]
-
-
 write.csv(result, file = "C:/Users/ericd/Dropbox/Eric Work/Ebert lab/LSP/gene_prediction/CH14_private.csv")
+
+# Private fucosyltransferase
+result2 <- result[grepl("fuc",result$hitName, ignore.case = TRUE),]
 write.csv(result2, file = "C:/Users/ericd/Dropbox/Eric Work/Ebert lab/LSP/gene_prediction/CH14_private_fucosyl.csv")
 
+################################################################################
+# Find private orthologs in Haplotype 2
 
-#####
 privateBED <- BED_CH434[!(BED_CH434$ORTH %in% BED_CH14$ORTH) & !(BED_CH434$ORTH %in% BED_T1$ORTH),]
+
 geneList <- read.delim("C:/Users/ericd/Dropbox/Eric Work/Ebert lab/LSP/gene_prediction/tsv_files/CH_434-inb3-a-1_functional.tsv", header = FALSE)
 
 geneList <- geneList[geneList$V1 %in% privateBED$ID,]
@@ -263,14 +266,18 @@ model <- geneList$V4.x
 hitName <- geneList$V6.x
 geneID <- geneList$V1
 
+# All private orthologs
 result <- data.frame(geneID,contig,startPos,stopPos,model,hitName)
-
-result2 <- result[grepl("fuc",result$hitName, ignore.case = TRUE),]
-
 write.csv(result, file = "C:/Users/ericd/Dropbox/Eric Work/Ebert lab/LSP/gene_prediction/CH434_private.csv")
 
-#####
+# Private fucosyltransferase
+result2 <- result[grepl("fuc",result$hitName, ignore.case = TRUE),]
+
+################################################################################
+# Find private orthologs in Haplotype 3
+
 privateBED <- BED_T1[!(BED_T1$ORTH %in% BED_CH14$ORTH) & !(BED_T1$ORTH %in% BED_CH434$ORTH),]
+
 geneList <- read.delim("C:/Users/ericd/Dropbox/Eric Work/Ebert lab/LSP/gene_prediction/tsv_files/t3_12_3_1i_12_functional.tsv", header = FALSE)
 
 geneList <- geneList[geneList$V1 %in% privateBED$ID,]
@@ -284,8 +291,9 @@ model <- geneList$V4.x
 hitName <- geneList$V6.x
 geneID <- geneList$V1
 
+# All private orthologs
 result <- data.frame(geneID,contig,startPos,stopPos,model,hitName)
-
-result2 <- result[grepl("fuc",result$hitName, ignore.case = TRUE),]
-
 write.csv(result, file = "C:/Users/ericd/Dropbox/Eric Work/Ebert lab/LSP/gene_prediction/T1_private.csv")
+
+# Private fucosyltransferase
+result2 <- result[grepl("fuc",result$hitName, ignore.case = TRUE),]
