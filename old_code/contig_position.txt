@@ -1,0 +1,20 @@
+awk '
+BEGIN { total=0 }
+/^>/ {
+  if (NR > 1) {
+    print prev, start
+    start += total
+  }
+  prev=$0
+  total=0
+  next
+}
+{
+  total += length($0)
+}
+END {
+  print prev, start
+}
+' CH2299_chr5.fa
+
+cat CH2299_chr5.fa | awk '$0 ~ ">" {if (NR > 1) {print c;} c=0;printf substr($0,2,100) "\t"; } $0 !~ ">" {c+=length($0);} END { print c; }'
